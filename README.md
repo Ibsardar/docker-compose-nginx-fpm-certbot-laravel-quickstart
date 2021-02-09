@@ -24,8 +24,20 @@
 
   - Make sure `etc\letsencrypt\<dnsprovider>.ini` exists and is correctly matching the API key given by your DNS provider
   - If you are not using DNS, make sure in `dns_cred_path` is set to an empty string in `init-letsencrypt.sh`
+  
+- ### For demo:
+
+  - Edit `docker-compose.production.yml` by setting `MODE` to `demo`
+
+  - Run `docker-compose -f docker-compose.production.yml build && docker-compose -f docker-compose.production.yml up`
 
 - ### For production:
+
+  - Run `docker-compose -f docker-compose.production.yml build && docker-compose -f docker-compose.production.yml up`
+  
+- ### For staging:
+
+  - Edit `docker-compose.production.yml` by setting `MODE` to `stage`
 
   - Run `docker-compose -f docker-compose.production.yml build && docker-compose -f docker-compose.production.yml up`
   
