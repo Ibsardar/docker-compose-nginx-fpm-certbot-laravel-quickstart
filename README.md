@@ -2,4 +2,4 @@
  Quickstart your Docker Composed App using Nginx, PHP-FPM, Certbot, and almost any version of Laravel
 
 
-...TODO: README
+**...TODO: README** *(for now, look **[here](https://github.com/Ibsardar/laravel-docker-compose-quickstart)** for a close-enough readme)*
