@@ -1,0 +1,109 @@
+#DEVELOPMENT FILE
+#THERE IS NO NEED TO RUN 'init-letsencrypt.sh' BEFORE RUNNING 'docker-compose up --build'
+version: '3.9'
+
+
+x-nginx-root: &nginx-root
+  NGINX_ROOT: /my/custom/root # make sure /server_dev/vhost.conf uses this same root
+x-global-restart-behaviour: &global-restart-behaviour
+  restart: unless-stopped
+x-mode: &mode
+  MODE: "dev" # options include: prod, stage, dev, demo
+
+
+services:
+
+
+  nginx_service:
+    container_name: nginx_service_container
+    build:
+      context: .
+      dockerfile: ./dockerfiles/nginx.Dockerfile
+      args:
+        <<: *nginx-root # can be used in Dockerfile or here
+    ports: # map host ports to containers port...
+      - "81:80" # MAKE SURE TO FORWARD THIS PORT IF RUNNING THIS DOCKER COMPOSE INSIDE A DOCKER CONTAINER (for vscode, see: /.devcontainer)
+      - "443:443"
+    # NOTE: mounts happen after Dockerfiles are built,
+    #       so this means the mount may wipe out any changes
+    #       from building in the mount directory in the container.
+    volumes: # map host server files/dirs to container files/dirs...
+      - /docker/volumes/nginx_logs:/var/log/nginx # for debugging
+      - ./server_dev/vhost.conf:/etc/nginx/conf.d/default.conf # sync nginx setup with our own conf file
+      #- ./server/certbot/conf:/etc/letsencrypt # sync output of init-letsencrypt
+      #- ./server/certbot/www:/var/www/certbot # sync output of init-letsencrypt
+      - /docker/volumes/cron:/var/spool/cron # remember cron jobs
+      # right side must be same as NGINX_ROOT
+      - ./:/my/custom/root # sync main project data    *** LARGE VOLUME ***
+    <<: *global-restart-behaviour
+    depends_on: 
+      - phpfpm_service # dependency because referenced in nginx conf file
+
+
+  phpfpm_service:
+    container_name: phpfpm_service_container
+    build:
+      context: .
+      dockerfile: ./dockerfiles/phpfpm.Dockerfile
+      args:
+        <<: *nginx-root
+        <<: *mode
+    volumes:
+      # right side must be same as NGINX_ROOT
+      - ./:/my/custom/root # sync main project data    *** LARGE VOLUME ***
+    <<: *global-restart-behaviour
+    depends_on:
+      - database_service
+
+
+  #certbot_service:
+  #  container_name: certbot_service_container
+  #  build:
+  #    context: .
+  #    dockerfile: ./dockerfiles/certbot.Dockerfile
+  #    args:
+  #      <<: *nginx-root
+  #  volumes:
+  #    - ./server/certbot/conf:/etc/letsencrypt
+  #    - ./server/certbot/www:/var/www/certbot
+  #    # comment out if not using dns plugin with certbot
+  #    - /etc/letsencrypt/digitalocean.ini:/etc/letsencrypt/digitalocean.ini # left side must match in init-letsencrypt.sh
+  #  <<: *global-restart-behaviour
+
+
+  admin_service:
+    container_name: admin_service_container
+    build:
+      context: .
+      dockerfile: ./dockerfiles/admin.Dockerfile
+      args:
+        <<: *nginx-root
+    ports:
+      - "8000:80" # MAKE SURE TO FORWARD THIS PORT IF RUNNING THIS DOCKER COMPOSE INSIDE A DOCKER CONTAINER (for vscode, see: /.devcontainer)
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: database_service
+    <<: *global-restart-behaviour
+    depends_on:
+      - database_service
+
+
+  database_service:
+    container_name: database_service_container
+    build:
+      context: .
+      dockerfile: ./dockerfiles/database.Dockerfile
+      args:
+        <<: *nginx-root
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: my_default_db # must match the name in server/init_database.sql
+      #MYSQL_ROOT_PASSWORD: secret
+    command:
+      # must be like NGINX_ROOT/server/init_database.sql
+      --init-file /my/custom/root/server/init_database.sql
+    volumes:
+      - /docker/volumes/mysql:/var/lib/mysql # all the database data    *** LARGE VOLUME ***
+      - /docker/volumes/mysql_logs:/var/log/mysql # for debugging
+    <<: *global-restart-behaviour
