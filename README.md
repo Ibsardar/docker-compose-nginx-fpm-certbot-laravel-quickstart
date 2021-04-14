@@ -109,6 +109,8 @@ Run `docker-compose build --no-cache && docker-compose up` to rebuild everything
 
 Run `docker system prune` to clean up everything docker related on your machine
 
+Run `docker-compose down --remove-orphans` to down docker while removing undefined services (usually fixes the 'process is already running' bug)
+
 ---
 
 #### Some Credits:
